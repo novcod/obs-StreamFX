@@ -697,8 +697,7 @@ if(REQUIRE_NVAR AND HAVE_NVAR)
 		"source/nvidia/ar/nvidia-ar-feature.hpp"
 		"source/nvidia/ar/nvidia-ar-feature.cpp"
 	)
-	list(APPEND PROJECT_LIBRARIES
-		nvARProxy
+	list(APPEND PROJECT_INCLUDE_DIRS
 	)
 endif()
 
