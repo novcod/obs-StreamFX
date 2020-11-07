@@ -696,6 +696,8 @@ if(REQUIRE_NVAR AND HAVE_NVAR)
 		"source/nvidia/ar/nvidia-ar.cpp"
 		"source/nvidia/ar/nvidia-ar-feature.hpp"
 		"source/nvidia/ar/nvidia-ar-feature.cpp"
+		"source/nvidia/ar/nvidia-ar-facedetection.hpp"
+		"source/nvidia/ar/nvidia-ar-facedetection.cpp"
 		"source/nvidia/ar/nvidia-ar-image.hpp"
 		"source/nvidia/ar/nvidia-ar-image.cpp"
 		"source/nvidia/ar/nvidia-ar-gs-texture.hpp"
