@@ -22,24 +22,47 @@
 #include "nvidia-cuda.hpp"
 
 namespace nvidia::cuda {
-	class context {
+	class context_stack;
+
+	class context : public std::enable_shared_from_this<::nvidia::cuda::context> {
 		std::shared_ptr<::nvidia::cuda::cuda> _cuda;
 		::nvidia::cuda::context_t             _ctx;
+		bool                                  _has_device;
+		::nvidia::cuda::device_t              _device;
 
-		// Primary Device Context
-		bool                     _has_device;
-		::nvidia::cuda::device_t _device;
+		public:
+		~context();
 
 		private:
 		context(std::shared_ptr<::nvidia::cuda::cuda> cuda);
 
 		public:
-		~context();
-
 #ifdef WIN32
 		context(std::shared_ptr<::nvidia::cuda::cuda> cuda, ID3D11Device* device);
 #endif
 
 		::nvidia::cuda::context_t get();
+
+		void push();
+		void pop();
+
+		void synchronize();
+
+		public:
+		std::shared_ptr<::nvidia::cuda::context_stack> enter();
+	};
+
+	class context_stack {
+		std::shared_ptr<::nvidia::cuda::context> _ctx;
+
+		public:
+		inline ~context_stack()
+		{
+			_ctx->pop();
+		}
+		inline context_stack(std::shared_ptr<::nvidia::cuda::context> ctx) : _ctx(ctx)
+		{
+			_ctx->push();
+		}
 	};
 } // namespace nvidia::cuda

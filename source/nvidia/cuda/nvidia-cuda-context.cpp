@@ -18,7 +18,23 @@
  */
 
 #include "nvidia-cuda-context.hpp"
+#include <cassert>
 #include <stdexcept>
+#include "util/util-logging.hpp"
+
+#ifdef _DEBUG
+#define ST_PREFIX "<%s> "
+#define D_LOG_ERROR(x, ...) P_LOG_ERROR(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_WARNING(x, ...) P_LOG_WARN(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_INFO(x, ...) P_LOG_INFO(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_DEBUG(x, ...) P_LOG_DEBUG(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#else
+#define ST_PREFIX "<nvidia::cuda::context> "
+#define D_LOG_ERROR(...) P_LOG_ERROR(ST_PREFIX __VA_ARGS__)
+#define D_LOG_WARNING(...) P_LOG_WARN(ST_PREFIX __VA_ARGS__)
+#define D_LOG_INFO(...) P_LOG_INFO(ST_PREFIX __VA_ARGS__)
+#define D_LOG_DEBUG(...) P_LOG_DEBUG(ST_PREFIX __VA_ARGS__)
+#endif
 
 #ifdef WIN32
 #ifdef _MSC_VER
@@ -31,19 +47,25 @@
 #endif
 #endif
 
-nvidia::cuda::context::context(std::shared_ptr<::nvidia::cuda::cuda> cuda)
-	: _cuda(cuda), _ctx(), _has_device(false), _device()
-{
-	if (!cuda)
-		throw std::invalid_argument("cuda");
-}
+#define ENABLE_STACK_CHECKS
 
 nvidia::cuda::context::~context()
 {
+	D_LOG_DEBUG("Finalizing... (Addr: 0x%" PRIuPTR ")", this);
+
 	if (_has_device) {
 		_cuda->cuDevicePrimaryCtxRelease(_device);
 	}
 	_cuda->cuCtxDestroy(_ctx);
+}
+
+nvidia::cuda::context::context(std::shared_ptr<::nvidia::cuda::cuda> cuda)
+	: _cuda(cuda), _ctx(), _has_device(false), _device()
+{
+	D_LOG_DEBUG("Initializating... (Addr: 0x%" PRIuPTR ")", this);
+
+	if (!cuda)
+		throw std::invalid_argument("cuda");
 }
 
 #ifdef WIN32
@@ -78,4 +100,42 @@ nvidia::cuda::context::context(std::shared_ptr<::nvidia::cuda::cuda> cuda, ID3D1
 ::nvidia::cuda::context_t nvidia::cuda::context::get()
 {
 	return _ctx;
+}
+
+std::shared_ptr<::nvidia::cuda::context_stack> nvidia::cuda::context::enter()
+{
+	return std::make_shared<::nvidia::cuda::context_stack>(shared_from_this());
+}
+
+void nvidia::cuda::context::push()
+{
+	if (auto res = _cuda->cuCtxPushCurrent(_ctx); res != ::nvidia::cuda::result::SUCCESS) {
+		throw ::nvidia::cuda::cuda_error(res);
+	}
+}
+
+void nvidia::cuda::context::pop()
+{
+#ifdef ENABLE_STACK_CHECKS
+	::nvidia::cuda::context_t ctx;
+	if (_cuda->cuCtxGetCurrent(&ctx) == ::nvidia::cuda::result::SUCCESS)
+		assert(ctx == _ctx);
+#endif
+
+	assert(_cuda->cuCtxPopCurrent(&ctx) == ::nvidia::cuda::result::SUCCESS);
+}
+
+void nvidia::cuda::context::synchronize()
+{
+	D_LOG_DEBUG("Synchronizing... (Addr: 0x%" PRIuPTR ")", this);
+
+#ifdef ENABLE_STACK_CHECKS
+	::nvidia::cuda::context_t ctx;
+	if (_cuda->cuCtxGetCurrent(&ctx) == ::nvidia::cuda::result::SUCCESS)
+		assert(ctx == _ctx);
+#endif
+
+	if (auto res = _cuda->cuCtxSynchronize(); res != ::nvidia::cuda::result::SUCCESS) {
+		throw ::nvidia::cuda::cuda_error(res);
+	}
 }
