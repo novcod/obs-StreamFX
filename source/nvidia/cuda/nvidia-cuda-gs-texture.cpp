@@ -19,14 +19,37 @@
 
 #include "nvidia-cuda-gs-texture.hpp"
 #include "obs/gs/gs-helper.hpp"
+#include "util/util-logging.hpp"
 
-nvidia::cuda::gstexture::gstexture(std::shared_ptr<nvidia::cuda::cuda> cuda, std::shared_ptr<gs::texture> texture)
-	: _cuda(cuda), _texture(texture), _resource(), _is_mapped(false), _pointer()
+#ifdef _DEBUG
+#define ST_PREFIX "<%s> "
+#define D_LOG_ERROR(x, ...) P_LOG_ERROR(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_WARNING(x, ...) P_LOG_WARN(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_INFO(x, ...) P_LOG_INFO(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#define D_LOG_DEBUG(x, ...) P_LOG_DEBUG(ST_PREFIX##x, __FUNCTION_SIG__, __VA_ARGS__)
+#else
+#define ST_PREFIX "<nvidia::cuda::gstexture> "
+#define D_LOG_ERROR(...) P_LOG_ERROR(ST_PREFIX __VA_ARGS__)
+#define D_LOG_WARNING(...) P_LOG_WARN(ST_PREFIX __VA_ARGS__)
+#define D_LOG_INFO(...) P_LOG_INFO(ST_PREFIX __VA_ARGS__)
+#define D_LOG_DEBUG(...) P_LOG_DEBUG(ST_PREFIX __VA_ARGS__)
+#endif
+
+nvidia::cuda::gstexture::~gstexture()
 {
+	D_LOG_DEBUG("Finalizing... (Addr: 0x%" PRIuPTR ")", this);
+
+	unmap();
+	_cuda->cuGraphicsUnregisterResource(_resource);
+}
+
+nvidia::cuda::gstexture::gstexture(std::shared_ptr<gs::texture> texture)
+	: _cuda(::nvidia::cuda::cuda::get()), _texture(texture), _resource(), _is_mapped(false), _pointer()
+{
+	D_LOG_DEBUG("Initializating... (Addr: 0x%" PRIuPTR ")", this);
+
 	if (!texture)
 		throw std::invalid_argument("texture");
-	if (!cuda)
-		throw std::invalid_argument("cuda");
 
 	gs::context gctx;
 	int         dev_type = gs_get_device_type();
@@ -61,12 +84,6 @@ nvidia::cuda::gstexture::gstexture(std::shared_ptr<nvidia::cuda::cuda> cuda, std
 		}
 	}
 #endif
-}
-
-nvidia::cuda::gstexture::~gstexture()
-{
-	unmap();
-	_cuda->cuGraphicsUnregisterResource(_resource);
 }
 
 nvidia::cuda::array_t nvidia::cuda::gstexture::map(std::shared_ptr<nvidia::cuda::stream> stream)
@@ -113,4 +130,14 @@ void nvidia::cuda::gstexture::unmap()
 	_is_mapped = false;
 	_pointer   = nullptr;
 	_stream.reset();
+}
+
+std::shared_ptr<gs::texture> nvidia::cuda::gstexture::get_texture()
+{
+	return _texture;
+}
+
+::nvidia::cuda::graphics_resource_t nvidia::cuda::gstexture::get()
+{
+	return _resource;
 }
