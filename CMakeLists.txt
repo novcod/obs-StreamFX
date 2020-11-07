@@ -698,6 +698,8 @@ if(REQUIRE_NVAR AND HAVE_NVAR)
 		"source/nvidia/ar/nvidia-ar-feature.cpp"
 		"source/nvidia/ar/nvidia-ar-image.hpp"
 		"source/nvidia/ar/nvidia-ar-image.cpp"
+		"source/nvidia/ar/nvidia-ar-gs-texture.hpp"
+		"source/nvidia/ar/nvidia-ar-gs-texture.cpp"
 	)
 	list(APPEND PROJECT_INCLUDE_DIRS
 	)
